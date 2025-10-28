@@ -385,8 +385,12 @@
                 if (count > 0) {
                     countdownEl.textContent = count;
                 } else {
+                    // dramatic finale
+                    countdownEl.textContent = 'AHHHHH!!';
                     clearInterval(countdownInterval);
-                    releaseThePeels();
+                    setTimeout(() => {
+                        releaseThePeels();
+                    }, 700);
                 }
             }, 1000);
         }
