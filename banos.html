@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BanOS 1.0</title>
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #FFE135 0%, #FFD700 50%, #FFA500 100%);
+            background-image: url('images/background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: overlay;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .desktop { width: 100vw; height: 100vh; position: relative; padding: 20px; }
+        .brand-badge { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); display: flex; align-items: center; gap: 10px; background: rgba(255, 250, 205, 0.6); border: 2px solid #D4AF37; border-radius: 999px; padding: 6px 10px; backdrop-filter: blur(2px); }
+        .brand-badge img { width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .brand-badge span { font-weight: bold; color: #8B7500; text-shadow: 0 1px 1px rgba(255,255,255,0.6); font-size: 12px; }
+        /* Floating images removed */
+        .icons-container { display: flex; flex-direction: column; gap: 30px; position: absolute; top: 20px; left: 20px; z-index: 20; }
+        .icon { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.2s; width: 80px; text-align: center; }
+        .icon:hover { transform: scale(1.1); }
+        .icon-icon { font-size: 48px; margin-bottom: 8px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .icon-label { color: #fff; font-size: 12px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); text-align: center; font-weight: bold; }
+        .window {
+            position: absolute;
+            border: 3px solid #D4AF37;
+            border-radius: 12px;
+            background: #FFFACD;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: none;
+            min-width: 300px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 500;
+            overflow: hidden;
+        }
+        .window.active { display: block; animation: bounceIn 0.3s ease-out; }
+        @keyframes bounceIn {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .window-header {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #D4AF37;
+        }
+        .window-title { font-weight: bold; color: #fff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .close-btn {
+            background: #ff4444;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .close-btn:hover { background: #cc0000; }
+        .window-content { padding: 20px; color: #333; text-align: center; }
+        .window-content h2 { color: #FF8C00; margin-bottom: 15px; font-size: 20px; }
+        .peel-notebook {
+            background: #fff;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px dashed #D4AF37;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .peel-item { padding: 12px 8px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.2s ease, opacity 0.2s ease; }
+        .peel-item::before { content: ""; }
+        .peel-item { position: relative; padding-left: 36px; }
+        .peel-item::after { content: "🍌"; position: absolute; left: 10px; font-size: 18px; opacity: 0.9; }
+        .peel-item:hover { background: #fffaf0; }
+        .peel-item.completed { text-decoration: line-through; opacity: 0.6; }
+        .peel-item.completed::after { content: "✅"; opacity: 1; }
+        .potassium-bar {
+            width: 100%;
+            height: 40px;
+            background: #eee;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #D4AF37;
+            margin: 10px 0;
+            position: relative;
+        }
+        .potassium-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700 0%, #FF8C00 100%);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .potassium-label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #222;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.6);
+            pointer-events: none;
+            padding: 0 10px;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+        .self-destruct {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            text-transform: uppercase;
+        }
+        .self-destruct:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
+        .self-destruct:active { transform: scale(0.95); }
+        .countdown { font-size: 72px; font-weight: bold; margin: 20px 0; }
+        .banana-peel { position: fixed; font-size: 40px; animation: fallDown 3s ease-in forwards; z-index: 1000; }
+        @keyframes fallDown {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .error-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #ff4444;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+        }
+        .error-screen.active { display: flex; }
+        .error-text { font-size: 24px; line-height: 1.8; text-align: center; animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        .kernel-panic { color: #ff8800; font-size: 48px; font-weight: bold; margin-bottom: 30px; }
+        .bananameter { font-size: 36px; margin: 15px 0; }
+        /* Splash screen */
+        .splash { position: fixed; inset: 0; background: radial-gradient(ellipse at top, rgba(255,225,53,0.95), rgba(255,165,0,0.95)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; z-index: 20000; color: #4a3b00; font-family: 'Courier New', monospace; transition: opacity 400ms ease; }
+        .splash.hide { opacity: 0; pointer-events: none; }
+        .banana-spinner { font-size: 64px; animation: spin 1.2s linear infinite; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.25)); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .splash-card { background: #FFFACD; border: 3px solid #D4AF37; border-radius: 14px; padding: 14px 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 10px; }
+        .splash-title { font-weight: bold; color: #8B7500; }
+        /* Toast */
+        .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 10px 14px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); opacity: 0; transition: opacity .25s ease, bottom .25s ease; z-index: 30000; pointer-events: none; }
+        .toast.show { opacity: 1; bottom: 26px; }
+        /* Lightbox for Banana Cam on mobile */
+        .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 16px; }
+        .lightbox.active { display: flex; }
+        .lightbox-panel { background: #FFFACD; border: 3px solid #D4AF37; border-radius: 12px; max-width: 92vw; max-height: 84vh; padding: 12px; box-shadow: 0 10px 32px rgba(0,0,0,0.5); position: relative; }
+        .lightbox-title { color: #FF8C00; font-weight: bold; margin-bottom: 8px; text-align: center; }
+        .lightbox-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        #lb-viewer { max-width: 80vw; max-height: 60vh; border-radius: 12px; border: 2px solid #D4AF37; box-shadow: 0 6px 16px rgba(0,0,0,0.3); }
+        .lb-close { position: absolute; top: 8px; right: 8px; }
+        .nav-btn { background:#FFA500; color:#fff; width:48px; height:48px; border-radius:50%; border:none; font-size:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.25); padding: 0; cursor: pointer; }
+        .nav-btn svg { width: 24px; height: 24px; fill: white; }
+        .nav-btn:active { transform: scale(0.96); }
+        @media (max-width: 768px) {
+            /* Mobile: brand badge stays top-right; icons stack under it on the right */
+            .icons-container { 
+                position: absolute; 
+                top: calc(env(safe-area-inset-top) + 56px + 10px); /* below badge */
+                right: calc(12px + env(safe-area-inset-right));
+                left: auto; 
+                width: auto; 
+                padding: 0; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center;
+                justify-content: flex-start; 
+                gap: 14px; 
+                z-index: 50; 
+            }
+            .icon { width: 72px; }
+            .icon-icon { font-size: 36px; }
+            .window { min-width: 280px; max-width: 90vw; }
+            .countdown { font-size: 48px; }
+            /* Floating images removed on mobile */
+            /* Badge nudge on mobile */
+            .brand-badge { top: calc(env(safe-area-inset-top) + 2vh); right: calc(8px + env(safe-area-inset-right)); transform: translateZ(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="splash" id="splash">
+        <div class="banana-spinner">🍌</div>
+        <div class="splash-card">
+            <img src="images/logo.png" alt="banOS" style="width:28px; height:28px; border-radius:50%"/>
+            <div class="splash-title">BanOS is loading…</div>
+        </div>
+        
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div class="desktop">
+        <div class="brand-badge">
+            <img src="images/logo.png" alt="banOS logo"/>
+            <span>BanOS 1.0</span>
+        </div>
+        <div class="icons-container">
+            <div class="icon" onclick="openWindow('peelnotes')">
+                <div class="icon-icon">🍌</div>
+                <div class="icon-label">Peel Notes</div>
+            </div>
+            <div class="icon" onclick="openWindow('potassium')">
+                <div class="icon-icon">⚡</div>
+                <div class="icon-label">Potassium<br>Meter</div>
+            </div>
+            <div class="icon" onclick="openWindow('selfdestruct')">
+                <div class="icon-icon">💣</div>
+                <div class="icon-label">Self<br>Destruct</div>
+            </div>
+            <div class="icon" onclick="openWindow('bananacam')">
+                <div class="icon-icon">📷</div>
+                <div class="icon-label">Banana<br>Cam</div>
+            </div>
+            <div class="icon" onclick="openWindow('groovebox')">
+                <div class="icon-icon">🎛️</div>
+                <div class="icon-label">Groove<br>Box</div>
+            </div>
+        </div>
+        <div id="desktop-bananas"></div>
+    </div>
+    <!-- Lightbox for Banana Cam (mobile) -->
+    <div class="lightbox" id="bananaLightbox">
+        <div class="lightbox-panel">
+            <button class="close-btn lb-close" onclick="closeLightbox()">✕</button>
+            <div class="lightbox-title">📷 Banana Cam</div>
+            <div class="lightbox-controls">
+                <button class="nav-btn" aria-label="Previous" onclick="prevImage(true)"><svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg></button>
+                <img id="lb-viewer" src="images/minion1.jpg" alt="viewer"/>
+                <button class="nav-btn" aria-label="Next" onclick="nextImage(true)"><svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="window" id="window-peelnotes">
+        <div class="window-header">
+            <span class="window-title">🍌 Peel Notes</span>
+            <button class="close-btn" onclick="closeWindow('peelnotes')">✕</button>
+        </div>
+        <div class="window-content">
+            <h2>Today's Tasks</h2>
+            <div class="peel-notebook" id="peelList"></div>
+        </div>
+    </div>
+    <div class="window" id="window-potassium">
+        <div class="window-header">
+            <span class="window-title">⚡ Potassium Meter</span>
+            <button class="close-btn" onclick="closeWindow('potassium')">✕</button>
+        </div>
+        <div class="window-content">
+            <h2>Current Potassium Levels</h2>
+            <div class="bananameter">🍌 BANANAMETER 🍌</div>
+            <div class="potassium-bar" id="pot-bar">
+                <div class="potassium-fill" id="pot-fill"></div>
+                <div class="potassium-label" id="pot-label">98% - OPTIMAL!</div>
+            </div>
+            <p style="margin-top: 20px; font-style: italic;">
+                <span id="pot-summary">"You're at peak potassium performance!"</span>
+            </p>
+            <p style="margin-top: 10px; color: #666;" id="pot-warning">⚠️ Warning: Exceeding 99% may cause<br>spontaneous potassium demonstration</p>
+        </div>
+    </div>
+    <div class="window" id="window-selfdestruct">
+        <div class="window-header">
+            <span class="window-title">💣 Self-Destruct Protocol</span>
+            <button class="close-btn" onclick="closeWindow('selfdestruct')">✕</button>
+        </div>
+        <div class="window-content">
+            <h2 style="color: #ff4444;">⚠️ WARNING ⚠️</h2>
+            <p style="margin: 20px 0;">
+                Initiating self-destruct sequence will release<br>
+                <strong>ALL THE PEELS</strong>
+            </p>
+            <p style="color: #666; margin-bottom: 20px;">
+                Are you sure you want to proceed?
+            </p>
+            <button class="self-destruct" onclick="initiateSelfDestruct()">
+                Yes, Peel Away! 🍌💣
+            </button>
+        </div>
+    </div>
+    <div class="error-screen" id="errorScreen">
+        <div class="kernel-panic">⚠️ KERNEL PANIC ⚠️</div>
+        <div class="error-text">
+            <div>Too much a-peel!</div>
+            <div style="font-size: 18px; margin-top: 20px;">
+                Banana kernel overload detected<br>
+                System peel-ice frozen<br>
+                Unable to handle the potassium surge
+            </div>
+            <div style="font-size: 14px; margin-top: 30px; color: #888;">
+                Error Code: BANANA_CRASH<br>
+                Suggestion: Eat more bananas
+            </div>
+        </div>
+    </div>
+    <!-- Banana Cam Window -->
+    <div class="window" id="window-bananacam">
+        <div class="window-header">
+            <span class="window-title">📷 Banana Cam</span>
+            <button class="close-btn" onclick="closeWindow('bananacam')">✕</button>
+        </div>
+        <div class="window-content">
+            <h2>Image Viewer</h2>
+            <div style="display:flex; align-items:center; gap:10px; justify-content:center; margin-top:10px;">
+                <button class="close-btn" style="background:#FFA500; width:auto; border-radius:8px; padding:6px 10px;" onclick="prevImage()">⟵ Prev</button>
+                <img id="viewer" src="images/minion1.jpg" alt="viewer" style="max-width:70vw; max-height:50vh; border-radius:12px; border:2px solid #D4AF37; box-shadow:0 6px 16px rgba(0,0,0,0.3)"/>
+                <button class="close-btn" style="background:#FFA500; width:auto; border-radius:8px; padding:6px 10px;" onclick="nextImage()">Next ⟶</button>
+            </div>
+            <div style="margin-top:8px; color:#666; font-size:12px;">Tap Prev/Next to browse</div>
+        </div>
+    </div>
+    <!-- Groove Box Window -->
+    <div class="window" id="window-groovebox">
+        <div class="window-header">
+            <span class="window-title">🎛️ Groove Box</span>
+            <button class="close-btn" onclick="closeWindow('groovebox')">✕</button>
+        </div>
+        <div class="window-content">
+            <h2>Minion Sound Board</h2>
+            <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; margin-top:10px;">
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Minion voice Hi.wav')">Hi</button>
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Minion Saying Wow 1.wav')">Wow</button>
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Cartoon Minions Laughing.wav')">Laugh</button>
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Minion Hit.wav')">Hit</button>
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Minion Saying Wee.wav')">Wee</button>
+                <button class="self-destruct" style="padding:10px 12px; font-size:16px;" onclick="playFile('sounds/Cartoon Minions Talking.wav')">Talk</button>
+            </div>
+            <div style="margin-top:20px; border-top:2px solid #D4AF37; padding-top:15px;">
+                <button class="self-destruct" style="padding:16px 24px; font-size:18px; width:100%; background:linear-gradient(135deg, #4CAF50 0%, #45a049 100%);" onclick="toggleMusic()" id="musicBtn">🎵 Play Minion Music</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Desktop banana overlay removed
+        
+        function openWindow(windowId) {
+            if (windowId === 'bananacam' && window.matchMedia('(max-width: 768px)').matches) {
+                openLightbox();
+                return;
+            }
+            document.getElementById('window-' + windowId).classList.add('active');
+        }
+        function closeWindow(windowId) {
+            document.getElementById('window-' + windowId).classList.remove('active');
+        }
+        function initiateSelfDestruct() {
+            const window = document.getElementById('window-selfdestruct');
+            const content = window.querySelector('.window-content');
+            content.innerHTML = `
+                <div class="countdown" id="countdown">3</div>
+                <h2 style="color: #ff4444;">SELF-DESTRUCT INITIATED!</h2>
+                <p>Releasing all banana peels...</p>
+            `;
+            let count = 3;
+            const countdownEl = document.getElementById('countdown');
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownEl.textContent = count;
+                } else {
+                    clearInterval(countdownInterval);
+                    releaseThePeels();
+                }
+            }, 1000);
+        }
+        function releaseThePeels() {
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => { createBananaPeel(); }, i * 20);
+            }
+            setTimeout(() => {
+                document.getElementById('errorScreen').classList.add('active');
+                closeWindow('selfdestruct');
+                setTimeout(() => { location.reload(); }, 5000);
+            }, 3000);
+        }
+        function createBananaPeel() {
+            const peel = document.createElement('div');
+            peel.className = 'banana-peel';
+            peel.innerHTML = '🍌';
+            peel.style.position = 'fixed';
+            peel.style.left = Math.random() * 100 + '%';
+            peel.style.top = '-50px';
+            peel.style.fontSize = (Math.random() * 30 + 20) + 'px';
+            document.body.appendChild(peel);
+            setTimeout(() => { peel.remove(); }, 3000);
+        }
+        // Confetti helper for easter eggs
+        function bananaConfetti(count = 100, speed = 20) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => { createBananaPeel(); }, i * speed);
+            }
+        }
+        function showToast(message) {
+            const t = document.getElementById('toast');
+            if (!t) return;
+            t.textContent = message;
+            t.classList.add('show');
+            clearTimeout(showToast._timer);
+            showToast._timer = setTimeout(() => t.classList.remove('show'), 1800);
+        }
+        // Banana Cam: simple viewer
+        const galleryImages = ['images/minion1.jpg','images/minion2.jpg','images/minion3.jpg'];
+        let galleryIndex = 0;
+        function showImage() {
+            const img = document.getElementById('viewer');
+            if (img) { img.src = galleryImages[galleryIndex]; }
+        }
+        function prevImage(isLightbox) { galleryIndex = (galleryIndex - 1 + galleryImages.length) % galleryImages.length; isLightbox ? showLightboxImage() : showImage(); }
+        function nextImage(isLightbox) { galleryIndex = (galleryIndex + 1) % galleryImages.length; isLightbox ? showLightboxImage() : showImage(); }
+        // Groove Box: play arbitrary file
+        const dynamicAudio = new Audio();
+        function playFile(path) {
+            try {
+                dynamicAudio.src = path;
+                dynamicAudio.currentTime = 0;
+                dynamicAudio.play();
+            } catch (e) { console.log('Audio error', e); }
+        }
+        // Minion Music player
+        const musicPlayer = new Audio();
+        let musicPlaying = false;
+        function toggleMusic() {
+            const btn = document.getElementById('musicBtn');
+            if (!musicPlaying) {
+                musicPlayer.src = 'Minion-Music.mp3';
+                musicPlayer.loop = true;
+                musicPlayer.play().then(() => {
+                    musicPlaying = true;
+                    btn.textContent = '⏸️ Stop Minion Music';
+                    btn.style.background = 'linear-gradient(135deg, #ff4444 0%, #cc0000 100%)';
+                }).catch(e => console.log('Music play failed:', e));
+            } else {
+                musicPlayer.pause();
+                musicPlaying = false;
+                btn.textContent = '🎵 Play Minion Music';
+                btn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
+            }
+        }
+        // Lightbox helpers
+        function openLightbox() {
+            const lb = document.getElementById('bananaLightbox');
+            if (!lb) return;
+            showLightboxImage();
+            lb.classList.add('active');
+        }
+        function closeLightbox() {
+            const lb = document.getElementById('bananaLightbox');
+            if (!lb) return;
+            lb.classList.remove('active');
+        }
+        function showLightboxImage() {
+            const img = document.getElementById('lb-viewer');
+            if (img) { img.src = galleryImages[galleryIndex]; }
+        }
+        // Peel Notes interactivity
+        const defaultPeels = [
+            'Appeal that bug',
+            'Calculate the peel‑imeter',
+            'Peel out for lunch',
+            'Do an even banana split',
+            'Investigate the peel‑spiracy',
+            'Compare bunch sizes',
+            'Banana recon mission',
+            'Restore from peel‑backup'
+        ];
+        function loadPeels() {
+            const saved = JSON.parse(localStorage.getItem('peelNotes') || 'null');
+            return Array.isArray(saved) ? saved : defaultPeels.map(t => ({ text: t, done: false }));
+        }
+        function savePeels(list) { localStorage.setItem('peelNotes', JSON.stringify(list)); }
+        function renderPeels() {
+            const container = document.getElementById('peelList');
+            if (!container) return;
+            container.innerHTML = '';
+            peelState.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = 'peel-item' + (item.done ? ' completed' : '');
+                el.textContent = item.text;
+                el.onclick = () => { peelState[idx].done = !peelState[idx].done; savePeels(peelState); renderPeels(); };
+                container.appendChild(el);
+            });
+        }
+        let peelState = loadPeels();
+        // Removed add/shuffle/clear controls per user preference
+        // Initial render on load of page
+        renderPeels();
+        // Konami code easter egg: up up down down left right left right B A
+        (function setupKonami() {
+            const seq = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+            let idx = 0;
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+                if (key === seq[idx] || key === seq[idx]?.toLowerCase()) {
+                    idx++;
+                    if (idx === seq.length) {
+                        bananaConfetti(200, 10);
+                        showToast('Konami unlocked: Banana confetti!');
+                        idx = 0;
+                    }
+                } else {
+                    idx = 0;
+                }
+            });
+        })();
+        // Badge 7-click secret: large confetti cascade
+        (function setupBadgeClicks() {
+            const badge = document.querySelector('.brand-badge');
+            if (!badge) return;
+            let clicks = 0;
+            let timer;
+            badge.addEventListener('click', () => {
+                clearTimeout(timer);
+                clicks++;
+                if (clicks >= 7) {
+                    bananaConfetti(500, 20);
+                    showToast('Secret unlocked: Mega banana cascade!');
+                    clicks = 0;
+                }
+                timer = setTimeout(() => { clicks = 0; }, 1200);
+            });
+        })();
+        // Potassium presets
+        const potassiumPresets = [
+            { value: 12, label: '12% - NEEDS MORE BANANA', summary: '"Status: banana-deficient. Apply banana ASAP."', warn: 'Tip: Consume one (1) banana to continue.' },
+            { value: 37, label: '37% - PEEL WARMUP', summary: '"Systems warming up. Mild banana activity detected."', warn: 'Caution: May cause light peeling.' },
+            { value: 62, label: '62% - GETTING ZESTY', summary: '"Stable potassium vibes. Productivity increasing."', warn: 'Note: Keep a snack banana nearby.' },
+            { value: 85, label: '85% - RIPE', summary: '"Excellent levels. You are highly peel-capable."', warn: 'Warning: Sudden banana puns may occur.' },
+            { value: 98, label: '98% - OPTIMAL!', summary: '"You\'re at peak potassium performance!"', warn: '⚠️ Exceeding 99% may cause spontaneous potassium demonstration.' },
+            { value: 101, label: '101% - TOO MUCH A-PEEL!', summary: '"Overclocked banana core!"', warn: '⚠️ System at risk of a-peel overflow. Engage snack cooldown.' }
+        ];
+        let potassiumIndex = 4;
+        function applyPotassium() {
+            const fill = document.getElementById('pot-fill');
+            const label = document.getElementById('pot-label');
+            const summary = document.getElementById('pot-summary');
+            const warning = document.getElementById('pot-warning');
+            if (!fill || !label) return;
+            const preset = potassiumPresets[potassiumIndex];
+            fill.style.width = Math.min(preset.value, 100) + '%';
+            label.textContent = preset.label;
+            // color tweak if overflow
+            fill.style.background = preset.value > 100 ? 'linear-gradient(90deg, #ff4444 0%, #ff8800 100%)' : 'linear-gradient(90deg, #FFD700 0%, #FF8C00 100%)';
+            if (summary) summary.textContent = preset.summary;
+            if (warning) warning.innerHTML = preset.warn.replace('\n','<br>');
+        }
+        function randomPotassium() { potassiumIndex = Math.floor(Math.random() * potassiumPresets.length); applyPotassium(); }
+        // initialize on load: show a random level each time
+        randomPotassium();
+        // Hide splash once content is ready
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const s = document.getElementById('splash');
+                if (s) s.classList.add('hide');
+                setTimeout(() => { if (s) s.remove(); }, 450);
+            }, 3500);
+        });
+    </script>
+</body>
+</html>
